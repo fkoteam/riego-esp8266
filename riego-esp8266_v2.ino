@@ -27,12 +27,12 @@ String contrasenya = "petisuis";
 const int AnalogIn  = A0;
 
 //PIN de control del motor. LOW es apagado y HIGH es encendido
-#define PWM1   D1  
+#define PWM1   D1
 //PIN de control del motor. LOW es expulsar agua y HIGH abserver
-#define PWM2   D2   
+#define PWM2   D2
 
 //Los sensores de humedad se estropean si están todo el rato encendidos. Esto es porque los electrodos hacen una especie de electrolisis. Así que tomamos muestras sólo cada X minutos. Este PIN controla el encendido/apagado del sensor.
-#define HUM   D6   
+#define HUM   D6
 
 //builtin led. Encendido por defecto, apagado mientras riega
 int salida = 2;
@@ -72,7 +72,7 @@ unsigned long ultimaLecturaHumedad = 0;
 void setup(void)
 {
   gpio_init(); // Initilise GPIO pins
-  pinMode(salida, OUTPUT); 
+  pinMode(salida, OUTPUT);
   EEPROM.begin(512);
   setSyncProvider( requestSync);  //set function to call when sync required
   setTime(hora, minuto, 0, dia, mes, anyo); // alternative to above, yr is 2 or 4 digit yr (2010 or 10 sets year to 2010)
@@ -103,12 +103,12 @@ void loop()
   button.read();
   server.handleClient();
 
-  //paramos riego si se está regando y ha pasado el tiempo definido 
+  //paramos riego si se está regando y ha pasado el tiempo definido
   if (regando && millis() > (ultimoRiego + (SEGUNDOS_RIEGO * 1000))) {
     pararRiego();
   }
-  
-  //paramos el wifi si la placa está online y ha pasado el tiempo definido 
+
+  //paramos el wifi si la placa está online y ha pasado el tiempo definido
   if (online && millis() > (cuandoOnline + (MINUTOS_ONLINE * 60 *  1000))) {
     light_sleep();
   }
@@ -116,34 +116,7 @@ void loop()
   //tomamos muestras de humedad al iniciar o segun el tiempo estipulado. Si ya se ha regado recientemente, no se toma la humedad
   if (ultimaLecturaHumedad == 0 || ((millis() > (ultimaLecturaHumedad + (MINUTOS_MUESTRA * 60 * 1000))) && (millis() > ultimoRiego + (HORAS_ENTRE_RIEGO_MIN * 60 * 60 * 1000))))
   {
-    int humedad = 0;
-    //activamos el sensor de humedad
-    digitalWrite(HUM, HIGH);
-    delay(100);//wait 10 milliseconds
-    Serial.println("Leyendo humedad. Muestra: ");
-
-    //tomamos X muestras de humedad y hacemos la media
-    for (int i = 0; i < NUM_MUESTRAS; i++)
-    {
-      int ahoraHumedad = analogRead(AnalogIn);
-      Serial.print(i);
-      Serial.print(". Valor: ");
-      Serial.println(ahoraHumedad);
-
-      humedad = (int)humedad + (int)ahoraHumedad;
-      delay(100);
-
-
-    }
-    //apagamos el sensor de humedad
-    digitalWrite(HUM, LOW);
-
-    humedad = humedad / NUM_MUESTRAS;
-    Serial.print("Media humedad: ");
-      Serial.println(humedad);
-    ultimaLecturaHumedad = millis();
-    //guardamos un registro de las 10 ultimas lectuas de humedad
-    guardaEepromHumedad(humedad);
+    int humedad = compruebaHumedad();
 
 
     //si la humedad está por debajo del número establecido, regamos
@@ -216,11 +189,11 @@ void pararRiego()
   //paramos riego
   digitalWrite(PWM1, LOW);
   digitalWrite(PWM2, LOW);
-  delay(500);
+  delay(200);
   //encendemos el motor absorbiendo agua
   digitalWrite(PWM2, HIGH);
   digitalWrite(PWM1, HIGH);
-  delay(500);
+  delay(1500);
   //volvemos a parar el motor
   digitalWrite(PWM1, LOW);
   digitalWrite(PWM2, LOW);
@@ -316,44 +289,47 @@ void handleRoot()
   if (server.hasArg("MINUTOS_MUESTRA"))
   {
     MINUTOS_MUESTRA = server.arg("MINUTOS_MUESTRA").toInt();
-    EEPROM.put(50,MINUTOS_MUESTRA);
+    EEPROM.put(50, MINUTOS_MUESTRA);
     EEPROM.commit();
     Serial.println("Nuevo parametro MINUTOS_MUESTRA: " + String(MINUTOS_MUESTRA));
   }
   if (server.hasArg("NUM_MUESTRAS")) {
     NUM_MUESTRAS = server.arg("NUM_MUESTRAS").toInt();
-    EEPROM.put(100,NUM_MUESTRAS);
+    EEPROM.put(100, NUM_MUESTRAS);
     EEPROM.commit();
     Serial.println("Nuevo parametro NUM_MUESTRAS: " + String(NUM_MUESTRAS));
   }
   if (server.hasArg("HUMEDAD_MIN")) {
     HUMEDAD_MIN = server.arg("HUMEDAD_MIN").toInt();
-    EEPROM.put(60,HUMEDAD_MIN);
+    EEPROM.put(60, HUMEDAD_MIN);
     EEPROM.commit();
     Serial.println("Nuevo parametro HUMEDAD_MIN: " + String(HUMEDAD_MIN));
   }
-  
+
   if (server.hasArg("SEGUNDOS_RIEGO")) {
     SEGUNDOS_RIEGO = server.arg("SEGUNDOS_RIEGO").toInt();
-    EEPROM.put(70,SEGUNDOS_RIEGO);
+    EEPROM.put(70, SEGUNDOS_RIEGO);
     EEPROM.commit();
     Serial.println("Nuevo parametro SEGUNDOS_RIEGO: " + String(SEGUNDOS_RIEGO));
   }
   if (server.hasArg("DIAS_MAX")) {
     DIAS_MAX = server.arg("DIAS_MAX").toInt();
-    EEPROM.put(80,DIAS_MAX);
+    EEPROM.put(80, DIAS_MAX);
     EEPROM.commit();
     Serial.println("Nuevo parametro DIAS_MAX: " + String(DIAS_MAX));
   }
   if (server.hasArg("HORAS_ENTRE_RIEGO_MIN")) {
     HORAS_ENTRE_RIEGO_MIN = server.arg("HORAS_ENTRE_RIEGO_MIN").toInt();
-    EEPROM.put(90,HORAS_ENTRE_RIEGO_MIN);
+    EEPROM.put(90, HORAS_ENTRE_RIEGO_MIN);
     EEPROM.commit();
     Serial.println("Nuevo parametro HORAS_ENTRE_RIEGO_MIN: " + String(HORAS_ENTRE_RIEGO_MIN));
   }
 
   if (server.hasArg("accion") && server.arg("accion") == "regar")
     regar();
+
+  if (server.hasArg("accion") && server.arg("accion") == "compruebaHumedad")
+    compruebaHumedad();
 
   String ultimosRiegos = getUltimosRiegos();
   String ultimasHumedades = getUltimasHumedades();
@@ -407,6 +383,9 @@ void handleRoot()
   Ultimos riegos: " + ultimosRiegos + "<br>\
   <form>\
     <button name=\"accion\" type=\"submit\" value=\"regar\">Regar ahora</button><br>\
+  </form> \
+  <form>\
+    <button name=\"accion\" type=\"submit\" value=\"compruebaHumedad\">Comprobar humedad</button><br>\
   </form> \
   </body>\
   </html>";
@@ -593,5 +572,40 @@ void timeToString(char* string, size_t size)
   byte minutes = seconds / 60;
   seconds %= 60;
   snprintf(string, size, "%04d:%02d:%02d:%02d", days, hours, minutes, seconds);
+}
+
+
+//comrpueba la humedad y la guarda en la eeprom
+int compruebaHumedad()
+{
+  int humedad=0;
+  //activamos el sensor de humedad
+  digitalWrite(HUM, HIGH);
+  delay(100);//wait 10 milliseconds
+  Serial.println("Leyendo humedad. Muestra: ");
+
+  //tomamos X muestras de humedad y hacemos la media
+  for (int i = 0; i < NUM_MUESTRAS; i++)
+  {
+    int ahoraHumedad = analogRead(AnalogIn);
+    Serial.print(i);
+    Serial.print(". Valor: ");
+    Serial.println(ahoraHumedad);
+
+    humedad = (int)humedad + (int)ahoraHumedad;
+    delay(100);
+
+
+  }
+  //apagamos el sensor de humedad
+  digitalWrite(HUM, LOW);
+
+  humedad = humedad / NUM_MUESTRAS;
+  Serial.print("Media humedad: ");
+  Serial.println(humedad);
+  ultimaLecturaHumedad = millis();
+  //guardamos un registro de las 10 ultimas lectuas de humedad
+  guardaEepromHumedad(humedad);
+  return humedad;
 }
 // end of code.
