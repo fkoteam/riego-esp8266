@@ -26,9 +26,9 @@ String contrasenya = "petisuis";
 //pin donde va conectado el sensor de humedad. Es el A0, unica entrada analogica del esp8266
 const int AnalogIn  = A0;
 
-//PIN de control del motor. LOW es apagado y HIGH es encendido
+//PIN de control del motor. 
 #define PWM1   D1
-//PIN de control del motor. LOW es expulsar agua y HIGH abserver
+//PIN de control del motor. 
 #define PWM2   D2
 
 //Los sensores de humedad se estropean si están todo el rato encendidos. Esto es porque los electrodos hacen una especie de electrolisis. Así que tomamos muestras sólo cada X minutos. Este PIN controla el encendido/apagado del sensor.
@@ -170,33 +170,26 @@ void light_sleep() {
 //inicia el riego
 void regar()
 {
+  light_sleep();
   Serial.println("Inicio Riego.");
 
-  digitalWrite(PWM1, HIGH);//riego encendido / apagado
-  digitalWrite(PWM2, LOW);//expulsa agua
+  digitalWrite(PWM1, LOW);//riego encendido / apagado
+  digitalWrite(PWM2, HIGH);
   digitalWrite(salida, HIGH);//apagamos builtin led
   ultimoRiego = millis();
   regando = true;
   guardaEepromRiego(now()); //guardamos las fechas de los últimos 10 riegos
 }
 
-//paramos riego. además de pararlo, tenemos que cambiarle la polaridad, ya que al hacer el vacío, si la fuente de agua está
-//por encima de lo que queremos regar, no deja de salir agua.
+//paramos riego
 void pararRiego()
 {
+  initWifi();
   Serial.println("Fin Riego.");
 
   //paramos riego
   digitalWrite(PWM1, LOW);
-  digitalWrite(PWM2, LOW);
-  delay(200);
-  //encendemos el motor absorbiendo agua
-  digitalWrite(PWM2, HIGH);
-  digitalWrite(PWM1, HIGH);
-  delay(1500);
-  //volvemos a parar el motor
-  digitalWrite(PWM1, LOW);
-  digitalWrite(PWM2, LOW);
+  digitalWrite(PWM2, LOW);    
   digitalWrite(salida, LOW);
   regando = false;
 }
